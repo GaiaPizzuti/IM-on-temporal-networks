@@ -19,20 +19,51 @@ class Graph:
         
         # initialize adjacency list
         # create a matrix with 'nodes' rows and columns
-        self.adjacency_list = {}
+        self.adjacency_list = []
         
     def add_edge(self, src, dst, unixts=1):
-        self.adjacency_list.update({src: {dst: unixts}})
+        #self.adjacency_list.update({src: {dst: unixts}})
+        if len(self.adjacency_list) <= src:
+            for _ in range(src - len(self.adjacency_list) + 1):
+                self.adjacency_list.append([])
+        
+        if len(self.adjacency_list[src]) <= dst:
+            for _ in range(dst - len(self.adjacency_list[src]) + 1):
+                self.adjacency_list[src].append([])
+                
+        self.adjacency_list[src][dst].append(unixts)
         
         if not self.directed:
-            self.adjacency_list.update({dst: {src: unixts}})
+            if len(self.adjacency_list) <= dst:
+                for _ in range(dst - len(self.adjacency_list) + 1):
+                    self.adjacency_list.append([])
+        
+            if len(self.adjacency_list[dst]) <= src:
+                for _ in range(src - len(self.adjacency_list[dst]) + 1):
+                    self.adjacency_list[dst].append([])
+                    
+            self.adjacency_list[dst][src].append(unixts)
     
     def print_graph(self):
-        print(self.adjacency_list)
-        
-    def get_nodes(self):
-        return self.adjacency_list.keys()  
+        for src in range (len(self.adjacency_list)):
+            for dst in range (len(self.adjacency_list[src])):
+                if self.adjacency_list[src][dst] != []:
+                    print(src, dst, self.adjacency_list[src][dst])
     
+    def clear(self):
+        return Graph()
+    
+    def get_nodes(self):
+        return set(range(len(self.adjacency_list)))
+    
+    def get_node_degree(self, node):
+        edges = 0
+        for dst in range (len(self.adjacency_list[node])):
+            if self.adjacency_list[node][dst] != []:
+                edges += 1
+        return edges
+    
+
 def create_graph_from_file(filename, window_size=1000):
     G = Graph()
     current_time = 0;
@@ -43,7 +74,29 @@ def create_graph_from_file(filename, window_size=1000):
             G.add_edge(src, dst, unixts=unixts)
             if current_time == window_size:
                 break
+            else:
+                current_time += 1
     return G
+
+# i need to create a graph for each window
+# it's important to preserve each edge timestamp
+def create_temporal_windows(filename, window_size=1000):
+    graph_set = []
+    current_time = 0
+    with open(filename, 'r') as f:
+        G = Graph()
+        for line in f:
+            src, dst, unixts = line.split()
+            src, dst, unixts = int(src), int(dst), int(unixts)
+            G.add_edge(src, dst, unixts=unixts)
+            if current_time == window_size:
+                current_time = 0
+                graph_set.append(G)
+                G = G.clear()
+            else:
+                current_time += 1
+        graph_set.append(G)
+    return graph_set
 
 
 
@@ -83,15 +136,18 @@ def spread_infection(seed, filename):
                 queue = []
                 queue.append(state)
                 if len(list_queue) <= dst:
-                        for _ in range(dst - len(list_queue)):
+                        for _ in range(dst - len(list_queue) + 1):
                             list_queue.append([])
-                list_queue.append(queue)
+                list_queue[dst] = queue 
             # for each node that has received a message, choose a random message and check if it is infected
+            current_node = 0
             for node in list_queue:
-                if node and node not in infected:
+                if node != [] and current_node not in infected:
                     random_message = random.choice(node)
                     if random_message == 1:
-                        infected.append(node)
+                        infected.append(current_node)
+                        print("node", current_node, "infected")
+                current_node += 1
             last_unixts = unixts
     
     return len(infected)
@@ -111,7 +167,7 @@ def find_seed_set(graph, k):
         for v in graph.get_nodes() - set(S):
             
             # get the degree of the node
-            degree = len(graph.adjacency_list[v])
+            degree = graph.get_node_degree(v)
             
             # update the winning node and spread so far
             if degree > best_degree:
