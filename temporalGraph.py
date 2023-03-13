@@ -83,18 +83,21 @@ def create_graph_from_file(filename, window_size=1000):
 def create_temporal_windows(filename, window_size=1000):
     graph_set = []
     current_time = 0
+    last_unixts = None
     with open(filename, 'r') as f:
         G = Graph()
         for line in f:
             src, dst, unixts = line.split()
             src, dst, unixts = int(src), int(dst), int(unixts)
             G.add_edge(src, dst, unixts=unixts)
-            if current_time == window_size:
-                current_time = 0
-                graph_set.append(G)
-                G = G.clear()
-            else:
-                current_time += 1
+            if last_unixts != None and last_unixts != unixts:
+                if current_time == window_size:
+                    current_time = 0
+                    graph_set.append(G)
+                    G = G.clear()
+                else:
+                    current_time += 1
+            last_unixts = unixts
         graph_set.append(G)
     return graph_set
 
@@ -152,7 +155,7 @@ def spread_infection(seed, filename):
     return len(infected)
 
 # find the seed set for the epidemic in a temporal graph
-def find_seed_set(graph, k):
+def find_seed_set(graph, k=1):
     '''
     Greedy algorithm for finding the seed set
     Input: graph is a graph, k is the number of nodes to be selected
@@ -180,10 +183,13 @@ def find_seed_set(graph, k):
 # ---------------------------- MAIN ----------------------------
 
 if __name__ == "__main__":
-    first_level = create_graph_from_file('CollegeMsg.txt')
-    
-    seed_set = find_seed_set(first_level, 30)
+    windows = create_temporal_windows('CollegeMsg.txt')
+    seed_set = []
+    for window in windows:
+        if find_seed_set(window)[0] not in seed_set:
+            seed_set.append(find_seed_set(window)[0])
     print(seed_set)
+    print(len(seed_set))
     
     infected = spread_infection(seed_set, 'CollegeMsg.txt')
     print(infected)
