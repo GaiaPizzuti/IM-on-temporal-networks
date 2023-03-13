@@ -125,6 +125,13 @@ def spread_infection(seed, filename):
             # if is equal, we'll continue to add element on the queue
             # if is None or different, clear the queue
             if last_unixts != None and last_unixts != unixts:
+                current_node = 0
+                for list in list_queue:
+                    if list != [] and current_node not in infected:
+                        random_message = random.choice(list)
+                        if random_message == 1:
+                            infected.append(current_node)
+                    current_node += 1
                 list_queue.clear()
             
             # add the message to the destination queue
@@ -140,14 +147,6 @@ def spread_infection(seed, filename):
                             list_queue.append([])
                 list_queue[dst] = queue 
             # for each node that has received a message, choose a random message and check if it is infected
-            current_node = 0
-            for node in list_queue:
-                if node != [] and current_node not in infected:
-                    random_message = random.choice(node)
-                    if random_message == 1:
-                        infected.append(current_node)
-                        print("node", current_node, "infected")
-                current_node += 1
             last_unixts = unixts
     
     return len(infected)
