@@ -1,4 +1,3 @@
-import time
 import random
 
 # creation of a graph from a file
@@ -129,6 +128,8 @@ def spread_infection(seed, filename):
             # if is None or different, clear the queue
             if last_unixts != None and last_unixts != unixts:
                 current_node = 0
+                
+                # for each node that has received a message, choose a random message and check if it is infected
                 for list in list_queue:
                     if list != [] and current_node not in infected:
                         random_message = random.choice(list)
@@ -149,7 +150,7 @@ def spread_infection(seed, filename):
                         for _ in range(dst - len(list_queue) + 1):
                             list_queue.append([])
                 list_queue[dst] = queue 
-            # for each node that has received a message, choose a random message and check if it is infected
+            
             last_unixts = unixts
     
     return len(infected)
