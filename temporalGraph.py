@@ -184,7 +184,7 @@ def find_seed_set(graph, k=1):
 # ---------------------------- MAIN ----------------------------
 
 if __name__ == "__main__":
-    windows = create_temporal_windows('CollegeMsg.txt')
+    windows = create_temporal_windows('email.txt')
     seed_set = []
     for window in windows:
         if find_seed_set(window)[0] not in seed_set:
@@ -192,5 +192,5 @@ if __name__ == "__main__":
     print(seed_set)
     print(len(seed_set))
     
-    infected = spread_infection(seed_set, 'CollegeMsg.txt')
+    infected = spread_infection(seed_set, 'email.txt')
     print(infected)
