@@ -21,7 +21,7 @@ class Node:
         self.children.append(child)
 
     def __repr__(self):
-        return f"Node({self.id}, {self.timestamp})"
+        return f"{self.id}, {self.timestamp}"
 
 # --------------------------------------------------------------Print Tree---------------------------------------------------------------
 
@@ -36,44 +36,48 @@ def print_tree(tree, spaces=0):
 
 # --------------------------------------------------------------Forward Simulation---------------------------------------------------------------
 
-def find_father(id_node : int, timestamp : int, forest : list[Node]):
+def forward_forest (seed_set, filename):
     '''
-    function that takes in input the id of the node and the forest of infection
-    and return the father of the node that will be the node that has the same id of the node passed in input
-    and with the deepest level
+    Simulation of the infection to find the forest
+    Input: graph and seedset
+    Output: forest of infection
     '''
-    father = set()
-    for tree in forest:
-        dfs(tree, id_node, timestamp, father)
-    return father
 
-def dfs(tree : Node, id_node : int, timestamp : int, fathers : set[Node]):
-    '''
-    Input: the tree, the id of the node, the timestamp of the node and the list of the father
-    Output: the fathers of the node that will be the node that has the same id of the node passed in input
-    '''
-    if tree.id == id_node and tree.timestamp < timestamp:
-        # the take the node as possible father
-        fathers.add(tree)
-    for child in tree.children:
-        dfs(child, id_node, timestamp, fathers)
+    # final forest of infection
+    forest = list(Node(seed,-1) for seed in seed_set)
+    infected = set(seed_set)
 
-def add_infected_edges(current_node : int, last_unixts: int, infected : set[int], list : list, forest : list[Node]):
-    '''
-    Input: the current node, the last timestamp, the list of infected nodes, the list of messages and the forest of infection
-    Output: the forest of infection with the new edges
-    '''
-    new_node = Node(current_node, last_unixts)
-    # find the father of the node for each infected message
-    for (src, state) in list:
-        if state == 1:
-            father_list = find_father(src, last_unixts, forest)
-            if father_list:
-                for father in father_list:
-                    father.add_child(new_node)
-                    infected.add(current_node)
+    # queue of tuples (src, message state)
+    messages = defaultdict(list)
 
+    last_unixts = None
+
+    file = (row for row in open(filename, 'r'))
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(dst) not in seed_set]
+
+    for src, dst, unixts in filtered_edges:
         
+        # check if the last_unixts is None or equal to the current unixts
+        # if is equal, we'll continue to add elements on the queue
+        # if is different, we'll clear the queue
+        if last_unixts != None and last_unixts != unixts:
+            create_infection_tree(messages, infected, last_unixts, forest)
+
+        # if the src is infected, tthe message is infected
+        if src in infected:
+            state = 1
+        else:
+            state = 0
+
+        # add the tuple (src, message state) to the queue
+        # if if the destination is already in the list, we'll add the tuple to the queue
+        messages[dst].append((src, state))
+
+        last_unixts = unixts
+
+    create_infection_tree(messages, infected, last_unixts, forest) # type: ignore
+    return forest
+
 def create_infection_tree (messages : dict[int, list[tuple[int, int]]], infected : set[int], last_unixts : int, forest : list[Node]):
     '''
     Input: the list of messages, the list of infected nodes, the last timestamp and the forest of infection
@@ -87,52 +91,52 @@ def create_infection_tree (messages : dict[int, list[tuple[int, int]]], infected
     #   - the state (infected or not)
 
     for (dst, data) in messages.items():
-        # data is the list of (src, state)
-        (_, state) = random.choice(data)
-        if state == 1:
-            add_infected_edges(dst, last_unixts, infected, data, forest)
+        if dst not in infected:
+            # data is the list of (src, state)
+            (_, state) = random.choice(data)
+            if state == 1:
+                # if an infected message is randomly chosen, we add the new node to the forest
+                # as child of all the nodes that send an infected message to the new node
+                new_node = Node(dst, last_unixts)
+                add_infected_edges(new_node, infected, data, forest)
     messages.clear()
 
-def forward_forest (seed_set, filename):
+def add_infected_edges(node : Node, infected : set[int], list : list, forest : list[Node]):
     '''
-    Simulation of the infection to find the forest
-    Input: graph and seedset
-    Output: forest of infection
+    Input: the current node, the last timestamp, the list of infected nodes, the list of messages and the forest of infection
+    Output: the forest of infection with the new edges
     '''
 
-    # final forest of infection
-    forest = [Node(seed,-1) for seed in seed_set]
-    infected = set(seed_set)
+    # find the father of the node for each infected message
+    for (src, state) in list:
+        if state == 1:
+            father_list = find_father(src, node.timestamp, forest)
+            if father_list:
+                for father in father_list:
+                    father.add_child(node)
+                    infected.add(node.id)
 
-    # queue of tuples (src, message state)
-    messages = defaultdict(list)
+def find_father(id : int, timestamp : int, forest : list[Node]):
+    '''
+    function that takes in input the id of the node and the forest of infection
+    and return the father of the node that will be the node that has the same id of the node passed in input
+    and with the deepest level
+    '''
+    father = set()
+    for tree in forest:
+        dfs(tree, id, timestamp, father)
+    return father
 
-    last_unixts = None
-
-    file = (row for row in open(filename, 'r'))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(dst) not in seed_set]
-
-    for src, dst, unixts in filtered_edges:
-        # if the src is infected, tthe message is infected
-        if src in infected:
-            state = 1
-        else:
-            state = 0
-        
-        # check if the last_unixts is None or equal to the current unixts
-        # if is equal, we'll continue to add elements on the queue
-        # if is different, we'll clear the queue
-        if last_unixts != None and last_unixts != unixts:
-            create_infection_tree(messages, infected, last_unixts, forest)
-
-        # add the tuple (src, message state) to the queue
-        # if if the destination is already in the list, we'll add the tuple to the queue
-        messages[dst].append((src, state))
-
-        last_unixts = unixts
-
-    create_infection_tree(messages, infected, last_unixts, forest) # type: ignore
-    return forest
+def dfs(tree : Node, id : int, timestamp : int, fathers : set[Node]):
+    '''
+    Input: the tree, the id of the node, the timestamp of the node and the list of the father
+    Output: the fathers of the node that will be the node that has the same id of the node passed in input
+    '''
+    if tree.id == id and tree.timestamp < timestamp:
+        # the take the node as possible father
+        fathers.add(tree)
+    for child in tree.children:
+        dfs(child, id, timestamp, fathers)
 
 # --------------------------------------------------------------Simulate Infection---------------------------------------------------------------
 
@@ -153,17 +157,18 @@ def simulate_infection (seed_set, filename, removed_nodes=[]):
     file = (row for row in open(filename, 'r'))
     filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
     for src, dst, unixts in filtered_edges:
-        # if the src is infected, than the message is infected
-        if src in infected:
-            state = 1
-        else:
-            state = 0
 
         # check if the last_unixts is None or equal to the current unixts
         # if is equal, we'll continue to add elements on the queue
         # if is different, we'll clear the queue
         if last_unixts != None and last_unixts != unixts:
             spread_infection(messages, infected)
+
+        # if the src is infected, than the message is infected
+        if src in infected:
+            state = 1
+        else:
+            state = 0
 
 
         # add the tuple (src, message state) to the queue
@@ -227,11 +232,11 @@ def find_most_common_node (nodes: dict[int, int], budget: int):
 
 if __name__ == "__main__":
 
-    filename = "graph.txt"
+    filename = "email.txt"
 
-    seed_set = {0} # seed set
-    times = 10 # budget of nodes to remove
-    node_budget = 1 # budget of nodes to remove
+    seed_set = {83, 49, 60, 85} # seed set
+    times = 100 # budget of nodes to remove
+    node_budget = 15 # budget of nodes to remove
     nodes, already_found = {}, set() # list of nodes present in a random path and list of nodes already found in previous paths
 
     first_simulation = simulate_infection(seed_set, filename)
@@ -245,6 +250,10 @@ if __name__ == "__main__":
 
         # choose a random path
         path = random_path(forest)
+
+        for node in path:
+            print(node.id, end=" ")
+        print()
 
         # remove the last node in order to not consider the leaf node that is useless for the infection
         path.pop(len(path) - 1)
