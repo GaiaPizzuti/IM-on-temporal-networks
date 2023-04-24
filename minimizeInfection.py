@@ -101,6 +101,7 @@ def create_infection_tree (messages : dict[int, list[tuple[int, int]]], infected
                 add_infected_edges(new_node, infected, data, forest)
     messages.clear()
 
+
 def add_infected_edges(node : Node, infected : set[int], list : list, forest : list[Node]):
     '''
     Input: the current node, the last timestamp, the list of infected nodes, the list of messages and the forest of infection
@@ -234,9 +235,9 @@ if __name__ == "__main__":
 
     filename = "email.txt"
 
-    seed_set = {83, 49, 60, 85} # seed set
+    seed_set = {83, 85} # seed set
     times = 100 # budget of nodes to remove
-    node_budget = 15 # budget of nodes to remove
+    node_budget = 3 # budget of nodes to remove
     nodes, already_found = {}, set() # list of nodes present in a random path and list of nodes already found in previous paths
 
     first_simulation = simulate_infection(seed_set, filename)
@@ -251,16 +252,13 @@ if __name__ == "__main__":
         # choose a random path
         path = random_path(forest)
 
-        for node in path:
-            print(node.id, end=" ")
-        print()
+        if len(path) > 1:
+            # remove the last node in order to not consider the leaf node that is useless for the infection
+            path.pop(len(path) - 1)
 
-        # remove the last node in order to not consider the leaf node that is useless for the infection
-        path.pop(len(path) - 1)
-
-        # remove the first node in order to not consider the root node that is a seed node and
-        # it is not possible to remove a seed node
-        path.pop(0)
+            # remove the first node in order to not consider the root node that is a seed node and
+            # it is not possible to remove a seed node
+            path.pop(0)
     
 
         # count the nodes in the path
