@@ -198,17 +198,17 @@ def choose_nodes (forest: list[Node], seed_set: set[int]) -> int:
     max_subtree = 0
     chosen_node = -1
     for tree in forest:
-        chosen_node = choose_nodes_rec(tree, seed_set, max_subtree, chosen_node)
+        max_subtree, chosen_node = choose_nodes_rec(tree, seed_set, max_subtree, chosen_node)
     
     return chosen_node
 
-def choose_nodes_rec (tree: Node, seed_set: set[int], max_subtree: int, node : int) -> int:
+def choose_nodes_rec (tree: Node, seed_set: set[int], max_subtree: int, node : int):
     if tree.subtree_size > max_subtree and tree.id not in seed_set:
         max_subtree = tree.subtree_size
         node = tree.id
     for child in tree.children:
-        node = choose_nodes_rec(child, seed_set, max_subtree, node)
-    return node
+        max_subtree, node = choose_nodes_rec(child, seed_set, max_subtree, node)
+    return max_subtree, node
 
 def find_best_node (nodes : dict[int, int], budget : int) -> list[int]:
 
@@ -269,7 +269,7 @@ if __name__ == "__main__":
     times = 100
     removed_nodes = defaultdict(int)
     
-    fig, ax = plt.subplots(1, 3, figsize=(15, 15))
+    fig, ax = plt.subplots(1, 3, figsize=(10, 10))
     ax0, ax1, ax2 = ax.flatten()
 
     forest_visualization (seed_set, filename, fig, ax0)
