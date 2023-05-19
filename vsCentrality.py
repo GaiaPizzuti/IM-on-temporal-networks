@@ -41,7 +41,7 @@ def print_tree(tree, spaces=0):
 
 # ------------------------- functions -------------------------
 
-def simulate_infection(seed_set : set, filename : str, removed_nodes=[]):
+def simulate_infection(seed_set : set, filename : str, removed_nodes=[], nodes=defaultdict()) -> set[int]:
     '''
     simulate the infection of a graph
     input: seed_set is the set of original infected nodes, filename is the name of the file containing the graph
@@ -59,14 +59,14 @@ def simulate_infection(seed_set : set, filename : str, removed_nodes=[]):
     filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
     for src, dst, unixts in filtered_edges:
 
+        if removed_nodes == []:
+            count_degree(src, dst, nodes, infected)
+
         # check if the last_unixts is None or queal to the current unixts
         # if is equal, we'll continue to add elements to the queue
         # if is different, we'll process the queue
         if last_unixts != None and last_unixts != unixts:
             process_queue (messages, infected)
-
-        print(src, dst, unixts)
-        print("infected: ", infected)
 
         # if the src is infected, than the message is infected
         if src in infected:
@@ -221,86 +221,57 @@ def find_best_node (nodes : dict[int, int], budget : int) -> list[int]:
     sorted_nodes = {k: v for k, v in sorted(nodes.items(), key=itemgetter(1), reverse=True)}
     return list(sorted_nodes.keys())[:budget]
 
+# ------------------------- Centrality Algorithm -------------------------
 
-# ------------------------- forest visualization -------------------------
+def count_degree (src : int, dst : int, nodes : dict[int, int], infected : set[int]):
+    if src in infected and dst not in infected:
+        nodes[dst] += 1
+        nodes[dst] += 1
 
-def forest_visualization (infected: set[int], filename : str, fig : Figure, ax, removed_nodes=()):
-    '''
-    function that visualize the forest of the infection
-    input: forest is the forest of the infection, filename is the name of the file containing the graph
-    output: it doesn't return anything, it just create a graph visualization
-    '''
-
-    # create a graph
-    G = ig.Graph.Read_Ncol(filename, names=True, directed=True)
-
-    translated_removed_nodes = translate_nodes (G.vs, removed_nodes)
-
-    # create the visualization
-    infected_patch = patches.Patch(color='red', label='Infected')
-    noninfected_patch = patches.Patch(color='grey', label='Non infected')
-    fig.legend(handles=[infected_patch, noninfected_patch], loc='outside upper right')
-    ig.plot(
-        G,
-        target=ax,
-        vertex_size=0.2, # size of the nodes
-        vertex_color=["grey" if int(node) not in infected else "red" for node in G.vs["name"]],
-        vertex_label=G.vs["name"],
-        vertex_label_size=7.0,
-        vertex_frame_width=4.0,
-        vertex_frame_color="white",
-        edge_label=G.es["weight"],
-        edge_label_size=7.0,
-        edge_width=0.5,
-        edge_color=["grey" if int(edge.source) not in translated_removed_nodes and int(edge.target) not in translated_removed_nodes else "white" for edge in G.es],
-        edge_label_color=["black" if int(edge.source) not in translated_removed_nodes and int(edge.target) not in translated_removed_nodes else "white" for edge in G.es],
-    )
-
-def translate_nodes (vertices, removed_nodes) -> set[int]:
-    translated_nodes = set()
-    for vertex in vertices:
-        if int(vertex["name"]) in removed_nodes:
-            translated_nodes.add(vertex.index)
-    return translated_nodes
+# to choose the nodes with the centrality algorithm, we'll use the find_best_node function
 
 # ------------------------- Main -------------------------
 
 if __name__ == "__main__":
     
-    filename = "graph.txt"
+    filename = "CollegeMsg.txt"
 
-    seed_set = {0}
-    node_budget = 1
+    seed_set = {41, 9, 400, 321, 67, 289, 555, 266, 713, 642, 638, 42, 448, 986, 1000, 194, 12, 250, 105, 1113}
+    node_budget = 100
     times = 100
-    removed_nodes = defaultdict(int)
-    
-    fig, ax = plt.subplots(1, 3, figsize=(15, 15))
-    ax0, ax1, ax2 = ax.flatten()
 
-    forest_visualization (seed_set, filename, fig, ax0)
+    # dictionary that contains the number of times that each node that compare in the subtree algorithm
+    removed_nodes_subtree = defaultdict(int)
 
-    first_simulation = simulate_infection (seed_set, filename)
+    # dictionary that contains the number of times that compare in the centrality algorithm
+    nodes_centrality = defaultdict(int)
 
-    print(f"Infected nodes: {first_simulation}")
-    
-    forest_visualization (first_simulation, filename, fig, ax1)
 
+    first_simulation = simulate_infection (seed_set, filename, nodes=nodes_centrality)
+
+    # simulation and selection of the nodes with the subtree algorithm
     for _ in range (times):
         forest = forward_forest (seed_set, filename)
 
-        selected_node = choose_nodes (forest, seed_set, node_budget)
-        for node in selected_node:
-            removed_nodes[node] = removed_nodes[node] + 1
+        selected_node_subtree = choose_nodes (forest, seed_set, node_budget)
+        for node in selected_node_subtree:
+            removed_nodes_subtree[node] = removed_nodes_subtree[node] + 1
 
-    selected_nodes = find_best_node (removed_nodes, node_budget)
-    print(f"Selected nodes: {selected_nodes}")
+    selected_nodes_subtree = find_best_node (removed_nodes_subtree, node_budget)
+    print(f"Selected nodes subtree: {selected_nodes_subtree}")
 
-    second_simulation = simulate_infection (seed_set, filename, selected_nodes)
-    print(f"Infected nodes: {second_simulation}")
+    average_subtree = 0
+    for _ in range(times):
+        second_simulation_subtree = simulate_infection (seed_set, filename, selected_nodes_subtree)
+        average_subtree += len(second_simulation_subtree)
+    print(f"Average number of infected nodes subtree: {average_subtree/times}")
 
-    forest_visualization (second_simulation, filename, fig, ax2, selected_nodes)
+    # simulation and selection of the nodes with the centrality algorithm
+    selected_nodes_centrality = find_best_node (nodes_centrality, node_budget)
+    print(f"Selected nodes centrality: {selected_nodes_centrality}")
 
-    ratio = len(second_simulation) / len(first_simulation)
-    print(f"Ratio: {ratio}")
-
-    plt.show()
+    average_centrality = 0
+    for _ in range(times):
+        second_simulation_centrality = simulate_infection (seed_set, filename, selected_nodes_centrality)
+        average_centrality += len(second_simulation_centrality)
+    print(f"Average number of infected nodes centrality: {average_centrality/times}")

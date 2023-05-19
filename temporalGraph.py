@@ -65,7 +65,7 @@ class Graph:
 
 def create_graph_from_file(filename, window_size=1000):
     G = Graph()
-    current_time = 0;
+    current_time = 0
     with open(filename, 'r') as f:
         for line in f:
             src, dst, unixts = line.split()
@@ -184,7 +184,8 @@ def find_seed_set(graph, k=1):
 # ---------------------------- MAIN ----------------------------
 
 if __name__ == "__main__":
-    windows = create_temporal_windows('email.txt')
+    filename = 'CollegeMsg.txt'
+    windows = create_temporal_windows(filename)
     seed_set = []
     for window in windows:
         if find_seed_set(window)[0] not in seed_set:
@@ -192,5 +193,5 @@ if __name__ == "__main__":
     print(seed_set)
     print(len(seed_set))
     
-    infected = spread_infection(seed_set, 'email.txt')
+    infected = spread_infection(seed_set, filename)
     print(infected)
