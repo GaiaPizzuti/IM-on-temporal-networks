@@ -7,6 +7,7 @@ from matplotlib import patches
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from operator import itemgetter
+from typing import DefaultDict, List, Set, Dict, Tuple
 
 class Node:
     
@@ -41,7 +42,7 @@ def print_tree(tree, spaces=0):
 
 # ------------------------- functions -------------------------
 
-def simulate_infection(seed_set : set, filename : str, removed_nodes=[], nodes=[]) -> set[int]:
+def simulate_infection(seed_set : Set, filename : str, removed_nodes=[], nodes=[]) -> Set[int]:
     '''
     simulate the infection of a graph
     input: seed_set is the set of original infected nodes, filename is the name of the file containing the graph
@@ -83,7 +84,7 @@ def simulate_infection(seed_set : set, filename : str, removed_nodes=[], nodes=[
     process_queue (messages, infected)
     return infected
 
-def process_queue (messages : dict[int, list[int]], infected : set[int]):
+def process_queue (messages : Dict[int, List[int]], infected : Set[int]):
     '''
     function that process the queue of messages: it choose a random message from the queue and
     if the message is infected, it will added to the infection tree
@@ -100,7 +101,7 @@ def process_queue (messages : dict[int, list[int]], infected : set[int]):
 
 # ------------------------- forward forest -------------------------
 
-def forward_forest (seed_set : set, filename : str) -> list[Node]:
+def forward_forest (seed_set : Set, filename : str) -> List[Node]:
     '''
     Simulation of the infection to find the forest of the infection
     input: seed_set is the set of original infected nodes, filename is the name of the file containing the graph
@@ -142,7 +143,7 @@ def forward_forest (seed_set : set, filename : str) -> list[Node]:
     update_infection_tree (messages, infected, forest, last_unixts) # type: ignore
     return forest
 
-def update_infection_tree (messages : dict[int, list[tuple[int, int]]], infected : set[int], forest : list[Node], unixts : int):
+def update_infection_tree (messages : Dict[int, List[Tuple[int, int]]], infected : Set[int], forest : List[Node], unixts : int):
     '''
     function that process the queue of messages: it choose a random message from the queue and
     if the message is infected, it will added to the infection tree
@@ -158,7 +159,7 @@ def update_infection_tree (messages : dict[int, list[tuple[int, int]]], infected
             infected.add(dst)
     messages.clear()
 
-def add_infected_edges (new_node : Node, forest : list[Node], src: int):
+def add_infected_edges (new_node : Node, forest : List[Node], src: int):
     ''''
     function that add a new infected edge between the dst node and each src node that has the selected id
     input: new_node is the node that has been infected, forest is the forest of the infection
@@ -172,7 +173,7 @@ def add_infected_edges (new_node : Node, forest : list[Node], src: int):
 
 # ------------------------- choose nodes -------------------------
 
-def count_subtree_size (forest: list[Node]):
+def count_subtree_size (forest: List[Node]):
     for tree in forest:
         count_subtree_size_rec(tree)
 
@@ -184,7 +185,7 @@ def count_subtree_size_rec (tree: Node):
             count_subtree_size_rec(child)
             tree.subtree_size += child.subtree_size
 
-def choose_nodes (forest: list[Node], seed_set: set[int], budget: int) -> set[int]:
+def choose_nodes (forest: List[Node], seed_set: Set[int], budget: int) -> Set[int]:
     '''
     function that choose k nodes from the forest
     input: forest is the forest of the infection, seed_set is the set of initial infected nodes, k is the number of nodes to choose
@@ -206,7 +207,7 @@ def choose_nodes (forest: list[Node], seed_set: set[int], budget: int) -> set[in
     
     return set_chosen_nodes
 
-def choose_nodes_rec (tree: Node, seed_set: set[int], max_subtree: int, node : int, set_chosen_nodes: set[int]):
+def choose_nodes_rec (tree: Node, seed_set: Set[int], max_subtree: int, node : int, set_chosen_nodes: Set[int]):
     if tree.subtree_size > max_subtree and tree.id not in seed_set and tree.id not in set_chosen_nodes:
         max_subtree = tree.subtree_size
         node = tree.id
@@ -214,7 +215,7 @@ def choose_nodes_rec (tree: Node, seed_set: set[int], max_subtree: int, node : i
         max_subtree, node = choose_nodes_rec(child, seed_set, max_subtree, node, set_chosen_nodes)
     return max_subtree, node
 
-def find_best_node (nodes : dict[int, int], budget : int) -> list[int]:
+def find_best_node (nodes : Dict[int, int], budget : int) -> List[int]:
 
     # sort the nodes by their subtree size
     sorted_nodes = {k: v for k, v in sorted(nodes.items(), key=itemgetter(1), reverse=True)}
@@ -222,7 +223,7 @@ def find_best_node (nodes : dict[int, int], budget : int) -> list[int]:
 
 # ------------------------- Random Algorithm -------------------------
 
-def choose_random_nodes (budget : int, seed_set: set[int], nodes: set[int]):
+def choose_random_nodes (budget : int, seed_set: Set[int], nodes: Set[int]):
     '''
     function that choose k nodes randomly
     input: budget is the number of nodes to choose
