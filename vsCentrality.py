@@ -151,12 +151,11 @@ def update_infection_tree (messages : dict[int, list[tuple[int, int]]], infected
     '''
 
     for dst, data in messages.items():
-        if dst not in infected:
-            src, state = random.choice(data)
-            if state == 1:
-                new_node = Node(dst, unixts)
-                add_infected_edges (new_node, forest, src)
-                infected.add(dst)
+        src, state = random.choice(data)
+        if state == 1:
+            new_node = Node(dst, unixts)
+            add_infected_edges (new_node, forest, src)
+            infected.add(dst)
     messages.clear()
 
 def add_infected_edges (new_node : Node, forest : list[Node], src: int):
@@ -224,9 +223,8 @@ def find_best_node (nodes : dict[int, int], budget : int) -> list[int]:
 # ------------------------- Centrality Algorithm -------------------------
 
 def count_degree (src : int, dst : int, nodes : dict[int, int], infected : set[int]):
-    if src in infected and dst not in infected:
-        nodes[dst] += 1
-        nodes[dst] += 1
+    nodes[src] += 1
+    nodes[dst] += 1
 
 # to choose the nodes with the centrality algorithm, we'll use the find_best_node function
 
@@ -234,10 +232,10 @@ def count_degree (src : int, dst : int, nodes : dict[int, int], infected : set[i
 
 if __name__ == "__main__":
     
-    filename = "CollegeMsg.txt"
+    filename = "email.txt"
 
-    seed_set = {41, 9, 400, 321, 67, 289, 555, 266, 713, 642, 638, 42, 448, 986, 1000, 194, 12, 250, 105, 1113}
-    node_budget = 100
+    seed_set = {83}
+    node_budget = 10
     times = 100
 
     # dictionary that contains the number of times that each node that compare in the subtree algorithm

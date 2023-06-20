@@ -151,12 +151,11 @@ def update_infection_tree (messages : dict[int, list[tuple[int, int]]], infected
     '''
 
     for dst, data in messages.items():
-        if dst not in infected:
-            src, state = random.choice(data)
-            if state == 1:
-                new_node = Node(dst, unixts)
-                add_infected_edges (new_node, forest, src)
-                infected.add(dst)
+        src, state = random.choice(data)
+        if state == 1:
+            new_node = Node(dst, unixts)
+            add_infected_edges (new_node, forest, src)
+            infected.add(dst)
     messages.clear()
 
 def add_infected_edges (new_node : Node, forest : list[Node], src: int):
