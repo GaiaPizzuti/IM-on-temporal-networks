@@ -11,6 +11,11 @@ import random
 # the message will be stored in a queue per node
 # timestamp are ordered
 
+PROB_OF_BEING_INFECTED = 0.2
+'''
+probability of not being infected: (1 - PROB_OF_BEING_INFECTED)^(number_of_infected_messages)
+'''
+
 class Graph:
     # constructor
     def __init__(self, directed=True):
@@ -102,7 +107,7 @@ def create_temporal_windows(filename, window_size=1000):
 
 
 
-def spread_infection(seed, filename):
+def spread_infection(seed, filename, prob: float):
     '''
     Spread the infection in the temporal network
     Input: seed is the seed set, filename is the name of the file
@@ -129,11 +134,20 @@ def spread_infection(seed, filename):
             if last_unixts != None and last_unixts != unixts:
                 current_node = 0
                 
-                # for each node that has received a message, choose a random message and check if it is infected
                 for list in list_queue:
                     if list != [] and current_node not in infected:
+                        """
+                        proviouse version in which we used to choose a random message and check if it was infected
                         random_message = random.choice(list)
                         if random_message == 1:
+                            infected.append(current_node) """
+                            
+                        # probability of not being infected is equal to (1 - PROB_OF_BEING_INFECTED)^(INFECTED_MESSAGES)
+                        infected_messages = sum(list)
+                        prob_of_not_being_infected = pow((1 - prob), infected_messages)
+                        result_infection = random.uniform(0, 1)
+                        # if the obtained result is greater than the probability of not being infected then the nose is infected
+                        if (result_infection > prob_of_not_being_infected):
                             infected.append(current_node)
                     current_node += 1
                 list_queue.clear()
@@ -181,17 +195,16 @@ def find_seed_set(graph, k=1):
         
     return S
 
-# ---------------------------- MAIN ----------------------------
-
-if __name__ == "__main__":
-    filename = 'CollegeMsg.txt'
+def influence_maximization(filename: str, prob: float = PROB_OF_BEING_INFECTED):
     windows = create_temporal_windows(filename)
     seed_set = []
     for window in windows:
         if find_seed_set(window)[0] not in seed_set:
             seed_set.append(find_seed_set(window)[0])
-    print(seed_set)
-    print(len(seed_set))
-    
-    infected = spread_infection(seed_set, filename)
-    print(infected)
+    return seed_set
+
+# ---------------------------- MAIN ----------------------------
+
+if __name__ == "__main__":
+    filename = 'data/CollegeMsg.txt'
+    influence_maximization(filename)

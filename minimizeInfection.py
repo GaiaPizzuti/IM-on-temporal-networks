@@ -2,7 +2,11 @@ import heapq
 import random
 from collections import defaultdict
 
+from matplotlib import pyplot as plt
+
 # --------------------------------------------------------------Class Node--------------------------------------------------------
+
+PROB_OF_BEING_INFECTED = 0.2
 
 class Node:
     
@@ -36,7 +40,7 @@ def print_tree(tree, spaces=0):
 
 # --------------------------------------------------------------Forward Simulation---------------------------------------------------------------
 
-def forward_forest (seed_set, filename):
+def forward_forest (seed_set, filename, prob):
     '''
     Simulation of the infection to find the forest
     Input: graph and seedset
@@ -53,7 +57,7 @@ def forward_forest (seed_set, filename):
     last_unixts = None
 
     file = (row for row in open(filename, 'r'))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(dst) not in seed_set]
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(" ") for line in file] if int(dst) not in seed_set]
 
     for src, dst, unixts in filtered_edges:
         
@@ -61,8 +65,8 @@ def forward_forest (seed_set, filename):
         # if is equal, we'll continue to add elements on the queue
         # if is different, we'll clear the queue
         if last_unixts != None and last_unixts != unixts:
-            create_infection_tree(messages, infected, last_unixts, forest)
-
+            create_infection_tree(messages, infected, last_unixts, forest, prob)
+        
         # if the src is infected, tthe message is infected
         if src in infected:
             state = 1
@@ -75,10 +79,10 @@ def forward_forest (seed_set, filename):
 
         last_unixts = unixts
 
-    create_infection_tree(messages, infected, last_unixts, forest) # type: ignore
+    create_infection_tree(messages, infected, last_unixts, forest, prob) # type: ignore
     return forest
 
-def create_infection_tree (messages : dict[int, list[tuple[int, int]]], infected : set[int], last_unixts : int, forest : list[Node]):
+def create_infection_tree (messages : dict[int, list[tuple[int, int]]], infected : set[int], last_unixts : int, forest : list[Node], prob: float):
     '''
     Input: the list of messages, the list of infected nodes, the last timestamp and the forest of infection
     Output: the forest of infection updated
@@ -92,9 +96,16 @@ def create_infection_tree (messages : dict[int, list[tuple[int, int]]], infected
 
     for (dst, data) in messages.items():
         if dst not in infected:
-            # data is the list of (src, state)
+            sum = 0
+            for (_, state) in data:
+                sum += state
+            prob_of_not_being_infected = pow((1 - prob), sum)
+            infection_result = random.uniform(0, 1)
+            """
+            data is the list of (src, state)
             (_, state) = random.choice(data)
-            if state == 1:
+            """
+            if infection_result > prob_of_not_being_infected:
                 # if an infected message is randomly chosen, we add the new node to the forest
                 # as child of all the nodes that send an infected message to the new node
                 new_node = Node(dst, last_unixts)
@@ -141,7 +152,7 @@ def dfs(tree : Node, id : int, timestamp : int, fathers : set[Node]):
 
 # --------------------------------------------------------------Simulate Infection---------------------------------------------------------------
 
-def simulate_infection (seed_set, filename, removed_nodes=[]):
+def simulate_infection (seed_set, filename, plot : list[int], removed_nodes=[], prob: float = PROB_OF_BEING_INFECTED):
     '''
     Spread the infection in the temporal network
     Input: seed is the seed set, filename is the name of the file
@@ -156,14 +167,15 @@ def simulate_infection (seed_set, filename, removed_nodes=[]):
     last_unixts = None
 
     file = (row for row in open(filename, 'r'))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(" ") for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
     for src, dst, unixts in filtered_edges:
 
         # check if the last_unixts is None or equal to the current unixts
         # if is equal, we'll continue to add elements on the queue
         # if is different, we'll clear the queue
         if last_unixts != None and last_unixts != unixts:
-            spread_infection(messages, infected)
+            spread_infection(messages, infected, prob)
+            plot.append(len(infected))
 
         # if the src is infected, than the message is infected
         if src in infected:
@@ -178,19 +190,29 @@ def simulate_infection (seed_set, filename, removed_nodes=[]):
 
         last_unixts = unixts
         
-    spread_infection(messages, infected)
+    spread_infection(messages, infected, prob)
+    plot.append(len(infected))
     return infected
 
-def spread_infection (messages : dict[int, list[int]], infected : set[int]):
+def spread_infection (messages : dict[int, list[int]], infected : set[int], prob: float):
     '''
-    Input: the list of messages and the list of infected nodes
-    Output: the list of infected nodes updated
+    Input:
+        - the list of messages and the list of infected nodes
+    
+    Output:
+        - the list of infected nodes updated
     '''
     
-    # for each node that has received a message, choose a random message and check if it is infected
     for (dst, states) in messages.items():
+        """
+        previous version in which we used to choose a random message and check if it was infected
         random_message = random.choice(states)
         if random_message == 1:
+            infected.add(dst) """
+        infected_messages = sum(states)
+        prob_of_not_being_infected = pow((1 - prob), infected_messages)
+        influence_result = random.uniform(0, 1)
+        if influence_result > prob_of_not_being_infected:
             infected.add(dst)
     messages.clear()
 
@@ -229,25 +251,28 @@ def find_most_common_node (nodes: dict[int, int], budget: int):
     common_node_ids = [k for k, _ in heapq.nlargest(budget, top_nodes.items(), key=lambda x: x[1])]
     return set(common_node_ids)
 
-# --------------------------------------------------------------Main---------------------------------------------------------------
-
-if __name__ == "__main__":
-
-    filename = "email.txt"
-
-    seed_set = {83, 85} # seed set
-    times = 100 # budget of nodes to remove
-    node_budget = 3 # budget of nodes to remove
+def minimize_infection(filename: str, seed_set: list, prob: float = PROB_OF_BEING_INFECTED):
+    '''
+    function that return the attack set
+    '''
+    times = 100
+    node_budget = 10 # budget of nodes to remove
     nodes, already_found = {}, set() # list of nodes present in a random path and list of nodes already found in previous paths
 
-    first_simulation = simulate_infection(seed_set, filename)
-    print("first simulation: ", first_simulation)
+    set_plot = list()
+
+    fig, ax = plt.subplots(figsize=(5, 5))
+    
+
+    first_simulation = simulate_infection(seed_set, filename, set_plot, prob=prob)
+    plt.plot(set_plot, label="No preventive measures", color="blue")
+    print("first simulation: ", len(first_simulation))
     first_infected = len(first_simulation)
 
     for _ in range(times):
 
         # find the forest of infection
-        forest = forward_forest(seed_set, filename)
+        forest = forward_forest(seed_set, filename, prob)
 
         # choose a random path
         path = random_path(forest)
@@ -266,18 +291,34 @@ if __name__ == "__main__":
 
         forest.clear()
 
-    print(nodes)
+    #print(nodes)
 
     # find the node with the highest number of times in the path
-    common_node = find_most_common_node(nodes, node_budget)
-    print("common node: ", common_node)
+    action_set = find_most_common_node(nodes, node_budget)
+    print("nodes appearing the most times in the path: ", action_set)
 
     # remove the node from the graph
     # we simulate the removal of the node by ignoring the edges that have the node as destination or source
-    second_simulation = simulate_infection(seed_set, filename, common_node)
+    set_plot = list()
+    second_simulation = simulate_infection(seed_set, filename, set_plot, action_set, prob=prob)
+    plt.plot(set_plot, label="With preventive measures", color="red")
 
-    print("second simulation: ", second_simulation)
+    print("second simulation: ", len(second_simulation))
     second_infected = len(second_simulation)
     
     ratio = second_infected / first_infected
-    print("ratio: ", ratio)
+    print("ratio between the former and the latter simulation: ", ratio)
+
+    plt.legend(loc="lower right", fontsize=13)
+    plt.xlabel("time")
+    plt.ylabel("number of infected nodes")
+    plt.show()
+
+# --------------------------------------------------------------Main---------------------------------------------------------------
+
+if __name__ == "__main__":
+
+    filename = "data/email.txt"
+    seed_set = [83, 49, 60, 85] # seed set
+    
+    minimize_infection(filename, seed_set)

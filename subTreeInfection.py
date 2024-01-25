@@ -8,6 +8,8 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from operator import itemgetter
 
+PROB_OF_BEING_INFECTED = 0.2
+
 class Node:
     
     def __init__(self, id, timestamp):
@@ -41,7 +43,7 @@ def print_tree(tree, spaces=0):
 
 # ------------------------- functions -------------------------
 
-def simulate_infection(seed_set : set, filename : str, removed_nodes=[]):
+def simulate_infection(seed_set : set, filename : str, plot : list[int], prob: float, removed_nodes=[]):
     '''
     simulate the infection of a graph
     input: seed_set is the set of original infected nodes, filename is the name of the file containing the graph
@@ -56,17 +58,15 @@ def simulate_infection(seed_set : set, filename : str, removed_nodes=[]):
     last_unixts = None
 
     file = (row for row in open(filename, "r"))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(" ") for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
     for src, dst, unixts in filtered_edges:
 
         # check if the last_unixts is None or queal to the current unixts
         # if is equal, we'll continue to add elements to the queue
         # if is different, we'll process the queue
         if last_unixts != None and last_unixts != unixts:
-            process_queue (messages, infected)
-
-        print(src, dst, unixts)
-        print("infected: ", infected)
+            process_queue (messages, infected, prob)
+            plot.append(len(infected))
 
         # if the src is infected, than the message is infected
         if src in infected:
@@ -80,10 +80,11 @@ def simulate_infection(seed_set : set, filename : str, removed_nodes=[]):
 
         last_unixts = unixts
 
-    process_queue (messages, infected)
+    process_queue (messages, infected, prob)
+    plot.append(len(infected))
     return infected
 
-def process_queue (messages : dict[int, list[int]], infected : set[int]):
+def process_queue (messages : dict[int, list[int]], infected : set[int], prob: float):
     '''
     function that process the queue of messages: it choose a random message from the queue and
     if the message is infected, it will added to the infection tree
@@ -93,14 +94,19 @@ def process_queue (messages : dict[int, list[int]], infected : set[int]):
 
     # for each node that has received a message, choose a random message from the queue and check if it is infected
     for dst, states in messages.items():
-        random_state = random.choice(states)
+        infected_messages = sum(states)
+        prob_of_not_being_infected = pow((1 - prob), infected_messages)
+        infection_result = random.uniform(0, 1)
+        """ random_state = random.choice(states)
         if random_state == 1:
+            infected.add(dst) """
+        if infection_result > prob_of_not_being_infected:
             infected.add(dst)
     messages.clear()
 
 # ------------------------- forward forest -------------------------
 
-def forward_forest (seed_set : set, filename : str) -> list[Node]:
+def forward_forest (seed_set : set, filename : str, prob: float) -> list[Node]:
     '''
     Simulation of the infection to find the forest of the infection
     input: seed_set is the set of original infected nodes, filename is the name of the file containing the graph
@@ -117,7 +123,7 @@ def forward_forest (seed_set : set, filename : str) -> list[Node]:
     last_unixts = None
 
     file = (row for row in open(filename, "r"))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(dst) not in seed_set]
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(" ") for line in file] if int(dst) not in seed_set]
 
     for src, dst, unixts in filtered_edges:
 
@@ -125,7 +131,7 @@ def forward_forest (seed_set : set, filename : str) -> list[Node]:
         # if is equal, we'll continue to add elements to the queue
         # if is different, we'll process the queue
         if last_unixts != None and last_unixts != unixts:
-            update_infection_tree (messages, infected, forest, last_unixts)
+            update_infection_tree (messages, infected, forest, last_unixts, prob)
         
         # if the src is infected, than the message is infected
         if src in infected:
@@ -139,10 +145,10 @@ def forward_forest (seed_set : set, filename : str) -> list[Node]:
 
         last_unixts = unixts
 
-    update_infection_tree (messages, infected, forest, last_unixts) # type: ignore
+    update_infection_tree (messages, infected, forest, last_unixts, prob) # type: ignore
     return forest
 
-def update_infection_tree (messages : dict[int, list[tuple[int, int]]], infected : set[int], forest : list[Node], unixts : int):
+def update_infection_tree (messages : dict[int, list[tuple[int, int]]], infected : set[int], forest : list[Node], unixts : int, prob: float):
     '''
     function that process the queue of messages: it choose a random message from the queue and
     if the message is infected, it will added to the infection tree
@@ -152,11 +158,22 @@ def update_infection_tree (messages : dict[int, list[tuple[int, int]]], infected
 
     for dst, data in messages.items():
         if dst not in infected:
+            
+            for src, state in data:
+                if state == 1:
+                    infection_result = random.uniform(0, 1)
+                    if infection_result <= prob:
+                        new_node = Node(dst, unixts)
+                        add_infected_edges (new_node, forest, src)
+                        infected.add(dst)
+                    break
+            """
+            previously version in which we used to choose a random message and check if it was infected or not
             src, state = random.choice(data)
             if state == 1:
                 new_node = Node(dst, unixts)
                 add_infected_edges (new_node, forest, src)
-                infected.add(dst)
+                infected.add(dst) """
     messages.clear()
 
 def add_infected_edges (new_node : Node, forest : list[Node], src: int):
@@ -263,30 +280,27 @@ def translate_nodes (vertices, removed_nodes) -> set[int]:
             translated_nodes.add(vertex.index)
     return translated_nodes
 
-# ------------------------- Main -------------------------
-
-if __name__ == "__main__":
-    
-    filename = "graph.txt"
-
-    seed_set = {0}
-    node_budget = 1
-    times = 100
+def minimize_infection(filename: str, seed_set: set, node_budget: int, prob: float = PROB_OF_BEING_INFECTED):
+    times = 10
     removed_nodes = defaultdict(int)
     
-    fig, ax = plt.subplots(1, 3, figsize=(15, 15))
-    ax0, ax1, ax2 = ax.flatten()
+    #fig, ax = plt.subplots(1, 3, figsize=(15, 15))
+    #ax0, ax1, ax2 = ax.flatten()
 
-    forest_visualization (seed_set, filename, fig, ax0)
+    set_plot = list()
+    fig, ax = plt.subplots(figsize=(5, 5))
 
-    first_simulation = simulate_infection (seed_set, filename)
+    #forest_visualization (seed_set, filename, fig, ax0)
 
-    print(f"Infected nodes: {first_simulation}")
+    first_simulation = simulate_infection (seed_set, filename, set_plot, prob)
+    plt.plot(set_plot, label="No preventive measures", color="blue")
+
+    print(f"Infected nodes:", len(first_simulation))
     
-    forest_visualization (first_simulation, filename, fig, ax1)
+    #forest_visualization (first_simulation, filename, fig, ax1)
 
     for _ in range (times):
-        forest = forward_forest (seed_set, filename)
+        forest = forward_forest (seed_set, filename, prob)
 
         selected_node = choose_nodes (forest, seed_set, node_budget)
         for node in selected_node:
@@ -295,12 +309,27 @@ if __name__ == "__main__":
     selected_nodes = find_best_node (removed_nodes, node_budget)
     print(f"Selected nodes: {selected_nodes}")
 
-    second_simulation = simulate_infection (seed_set, filename, selected_nodes)
-    print(f"Infected nodes: {second_simulation}")
+    set_plot = list()
+    second_simulation = simulate_infection (seed_set, filename, set_plot, prob, selected_nodes)
+    print(f"Infected nodes: {len(second_simulation)}")
+    plt.plot(set_plot, label="Subtree algorithm", color="red")
 
-    forest_visualization (second_simulation, filename, fig, ax2, selected_nodes)
+    #forest_visualization (second_simulation, filename, fig, ax2, selected_nodes)
 
     ratio = len(second_simulation) / len(first_simulation)
     print(f"Ratio: {ratio}")
 
+    plt.legend(loc="lower right", fontsize=14)
+    plt.xlabel("time")
+    plt.ylabel("number of infected nodes")
     plt.show()
+
+# ------------------------- Main -------------------------
+
+if __name__ == "__main__":
+    
+    filename = "data/email.txt"
+    seed_set = {83, 49, 60, 85}
+    node_budget = 10
+    
+    minimize_infection(filename, seed_set, node_budget)

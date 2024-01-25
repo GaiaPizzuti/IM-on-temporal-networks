@@ -2,12 +2,10 @@
 
 from collections import defaultdict
 import random
-import igraph as ig
-from matplotlib import patches
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
 from operator import itemgetter
-from typing import DefaultDict, List, Set, Dict, Tuple
+from typing import List, Set, Dict, Tuple
+
+PROB_OF_BEING_INFECTED = 0.2
 
 class Node:
     
@@ -42,7 +40,7 @@ def print_tree(tree, spaces=0):
 
 # ------------------------- functions -------------------------
 
-def simulate_infection(seed_set : Set, filename : str, removed_nodes=[], nodes=[]) -> Set[int]:
+def simulate_infection(seed_set : Set, filename : str, prob: float, removed_nodes=[], nodes=[]) -> Set[int]:
     '''
     simulate the infection of a graph
     input: seed_set is the set of original infected nodes, filename is the name of the file containing the graph
@@ -57,7 +55,7 @@ def simulate_infection(seed_set : Set, filename : str, removed_nodes=[], nodes=[
     last_unixts = None
 
     file = (row for row in open(filename, "r"))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(",") for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
     for src, dst, unixts in filtered_edges:
 
         if removed_nodes == []:
@@ -67,7 +65,7 @@ def simulate_infection(seed_set : Set, filename : str, removed_nodes=[], nodes=[
         # if is equal, we'll continue to add elements to the queue
         # if is different, we'll process the queue
         if last_unixts != None and last_unixts != unixts:
-            process_queue (messages, infected)
+            process_queue (messages, infected, prob)
 
         # if the src is infected, than the message is infected
         if src in infected:
@@ -81,10 +79,10 @@ def simulate_infection(seed_set : Set, filename : str, removed_nodes=[], nodes=[
 
         last_unixts = unixts
 
-    process_queue (messages, infected)
+    process_queue (messages, infected, prob)
     return infected
 
-def process_queue (messages : Dict[int, List[int]], infected : Set[int]):
+def process_queue (messages : Dict[int, List[int]], infected : Set[int], prob: float):
     '''
     function that process the queue of messages: it choose a random message from the queue and
     if the message is infected, it will added to the infection tree
@@ -94,14 +92,19 @@ def process_queue (messages : Dict[int, List[int]], infected : Set[int]):
 
     # for each node that has received a message, choose a random message from the queue and check if it is infected
     for dst, states in messages.items():
-        random_state = random.choice(states)
+        """ random_state = random.choice(states)
         if random_state == 1:
+            infected.add(dst) """
+        infected_messages = sum(states)
+        prob_of_not_being_infected = pow((1 - prob), infected_messages)
+        infection_result = random.uniform(0, 1)
+        if infection_result > prob_of_not_being_infected:
             infected.add(dst)
     messages.clear()
 
 # ------------------------- forward forest -------------------------
 
-def forward_forest (seed_set : Set, filename : str) -> List[Node]:
+def forward_forest (seed_set : Set, filename : str, prob: float) -> List[Node]:
     '''
     Simulation of the infection to find the forest of the infection
     input: seed_set is the set of original infected nodes, filename is the name of the file containing the graph
@@ -118,7 +121,7 @@ def forward_forest (seed_set : Set, filename : str) -> List[Node]:
     last_unixts = None
 
     file = (row for row in open(filename, "r"))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(dst) not in seed_set]
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(",") for line in file] if int(dst) not in seed_set]
 
     for src, dst, unixts in filtered_edges:
 
@@ -126,7 +129,7 @@ def forward_forest (seed_set : Set, filename : str) -> List[Node]:
         # if is equal, we'll continue to add elements to the queue
         # if is different, we'll process the queue
         if last_unixts != None and last_unixts != unixts:
-            update_infection_tree (messages, infected, forest, last_unixts)
+            update_infection_tree (messages, infected, forest, last_unixts, prob)
         
         # if the src is infected, than the message is infected
         if src in infected:
@@ -140,10 +143,10 @@ def forward_forest (seed_set : Set, filename : str) -> List[Node]:
 
         last_unixts = unixts
 
-    update_infection_tree (messages, infected, forest, last_unixts) # type: ignore
+    update_infection_tree (messages, infected, forest, last_unixts, prob) # type: ignore
     return forest
 
-def update_infection_tree (messages : Dict[int, List[Tuple[int, int]]], infected : Set[int], forest : List[Node], unixts : int):
+def update_infection_tree (messages : Dict[int, List[Tuple[int, int]]], infected : Set[int], forest : List[Node], unixts : int, prob: float):
     '''
     function that process the queue of messages: it choose a random message from the queue and
     if the message is infected, it will added to the infection tree
@@ -152,11 +155,20 @@ def update_infection_tree (messages : Dict[int, List[Tuple[int, int]]], infected
     '''
 
     for dst, data in messages.items():
-        src, state = random.choice(data)
-        if state == 1:
-            new_node = Node(dst, unixts)
-            add_infected_edges (new_node, forest, src)
-            infected.add(dst)
+        if dst not in infected:
+            """ src, state = random.choice(data)
+            if state == 1:
+                new_node = Node(dst, unixts)
+                add_infected_edges (new_node, forest, src)
+                infected.add(dst) """
+            for src, state in data:
+                if state == 1:
+                    infection_result = random.uniform(0, 1)
+                    if infection_result <= prob:
+                        new_node = Node(dst, unixts)
+                        add_infected_edges (new_node, forest, src)
+                        infected.add(dst)
+                    break
     messages.clear()
 
 def add_infected_edges (new_node : Node, forest : List[Node], src: int):
@@ -242,15 +254,7 @@ def count_nodes (src: int, dst: int, list_nodes: set[int]):
     list_nodes.add(dst)
     return list_nodes
 
-
-# ------------------------- Main -------------------------
-
-if __name__ == "__main__":
-    
-    filename = "CollegeMsg.txt"
-
-    seed_set = {41, 9, 400, 321, 67, 289, 555, 266, 713, 642, 638, 42, 448, 986, 1000, 194, 12, 250, 105, 1113}
-    node_budget = 100
+def random_analysis(filename: str, seed_set: set, node_budget: int, prob: float = PROB_OF_BEING_INFECTED):
     times = 100
 
     # set that contains all the nodes of the graph
@@ -259,12 +263,12 @@ if __name__ == "__main__":
     # dictionary that contains the number of times that each node has been removed from the forest in the subtree algorithm
     removed_nodes_subtree = defaultdict(int)
 
-    first_simulation = simulate_infection (seed_set, filename, nodes=nodes)
+    first_simulation = simulate_infection (seed_set, filename, prob, nodes=nodes)
     print(f"First simulation: {len(first_simulation)}")
 
     # simulation and selection of the nodes with the subtree algorithm
     for _ in range (times):
-        forest = forward_forest (seed_set, filename)
+        forest = forward_forest (seed_set, filename, prob)
 
         selected_node_subtree = choose_nodes (forest, seed_set, node_budget)
         for node in selected_node_subtree:
@@ -275,7 +279,7 @@ if __name__ == "__main__":
 
     average_subtree = 0
     for _ in range(times):
-        second_simulation_subtree = simulate_infection (seed_set, filename, selected_nodes_subtree)
+        second_simulation_subtree = simulate_infection (seed_set, filename, prob, selected_nodes_subtree)
         average_subtree += len(second_simulation_subtree)
     print(f"Infected nodes subtree: {average_subtree/times}")
 
@@ -285,6 +289,15 @@ if __name__ == "__main__":
     
     average_random = 0
     for _ in range(times):
-        second_simulation_random = simulate_infection (seed_set, filename, selected_node_random)
+        second_simulation_random = simulate_infection (seed_set, filename, prob, selected_node_random)
         average_random += len(second_simulation_random)
     print(f"Infected nodes random: {average_random/times}")
+
+# ------------------------- Main -------------------------
+
+if __name__ == "__main__":
+    
+    filename = "data/email.txt"
+    seed_set = {83, 49, 60, 85}
+    node_budget = 20
+    random_analysis(filename, seed_set, node_budget)
