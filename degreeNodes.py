@@ -10,29 +10,35 @@
 # ------------------------- Main -------------------------
 
 from matplotlib import pyplot as plt
-import numpy as np
 
-
-if __name__ == "__main__":
+def degree_nodes (filename: str, attack_set_subtree: list, attack_set_centrality: list):
+    '''
+    function that check the degree of nodes selected by the subtree algorithm and by the centrality algorithm and plot the comparison
+    and then print the number of edges removed by each algorithm
     
-    filename = "fb-forum.txt"
+    input:
+        - filename: str, the name of the file containing the information about the network
+        - attack_set_subtree: list, list of nodes selected by the subtree algorithm
+        - attack_set_centrality: list, list of nodes selected by the centrality algorithm
+        
+    output: None
+    '''
     degrees_in = []
     degrees_out = []
-    degrees = []
-
-    attack_set_subree = [388, 389, 777, 538, 418, 424, 555, 431, 49, 434, 435, 51, 308, 185, 442, 187, 445, 447, 64, 65, 452, 205, 83, 90, 220, 735, 375, 98, 100, 741, 870, 871, 743, 361, 873, 231, 237, 493, 495, 239, 369, 498, 371, 244, 238, 759, 636, 253, 126, 767]
-    attack_set_centrality = [93, 290, 592, 395, 388, 759, 734, 96, 9, 392, 39, 389, 538, 870, 62, 387, 437, 686, 3, 637, 240, 443, 703, 49, 742, 376, 362, 91, 83, 154, 274, 92, 445, 394, 18, 346, 90, 102, 869, 424, 50, 244, 435, 636, 363, 313, 222, 183, 383, 99]
-
+    
     # find common nodes
-    common_nodes = set(attack_set_subree).intersection(set(attack_set_centrality))
+    common_nodes = set(attack_set_subtree).intersection(set(attack_set_centrality))
     print(f"Common nodes: {common_nodes}")
     print(f"Number of common nodes: {len(common_nodes)}")
 
 
     # read the file
     with open(filename, 'r') as f:
+        split_char = ' '
+        if filename == 'data/fb-forum.txt':
+            split_char = ','
         for line in f:
-            src, dst, unixts = line.split(",")
+            src, dst, unixts = line.split(split_char)
             src, dst, unixts = int(src), int(dst), int(unixts)
 
             # if the src is not in the list, add 1 in the list in position src
@@ -47,33 +53,42 @@ if __name__ == "__main__":
                     degrees_out.append(0)
             degrees_out[dst] += 1
 
-
-    # print centrality degrees
-    for node in attack_set_centrality:
-        print(f"Node {node} centrality degree: {degrees_in[node]} + {degrees_out[node]} = {degrees_in[node] + degrees_out[node]}")
-
-    print("\n\n")
-    for node in attack_set_subree:
-        print(f"Node {node} subtree degree: {degrees_in[node]} + {degrees_out[node]} = {degrees_in[node] + degrees_out[node]}")
-
     # plot the degrees of nodes selected by subtree attack and centrality attack
     set_plot_subtree = list()
     set_plot_centrality = list()
-    fig, ax = plt.subplots(figsize=(10, 5))
+    _, ax = plt.subplots(figsize=(10, 5))
 
+    subtree_count = 0
     # histogram of degrees of nodes selected by subtree attack
-    for node in attack_set_subree:
-        set_plot_subtree.append(degrees_in[node] + degrees_out[node])
+    for node in attack_set_subtree:
+        total_nodes = degrees_in[node] + degrees_out[node]
+        set_plot_subtree.append(total_nodes)
+        subtree_count += total_nodes
 
+    centrality_count = 0
     # histogram of degrees of nodes selected by centrality attack
     for node in attack_set_centrality:
-        set_plot_centrality.append(degrees_in[node] + degrees_out[node])
+        total_nodes = degrees_in[node] + degrees_out[node]
+        set_plot_centrality.append(total_nodes)
+        centrality_count += total_nodes
     
     plt.hist([set_plot_centrality, set_plot_subtree], bins=100, alpha=0.5)
     plt.legend(['Centrality', 'Subtree'], loc='upper right', fontsize=15)
-
+    
+    print('Number of edges removed by subtrees algorithm: ', subtree_count)
+    print('Number of nodes removed by centrality algorithm: ', centrality_count)
 
     ax.set_xlabel('Degree')
     ax.set_ylabel('Number of nodes')
 
     plt.show()
+
+
+if __name__ == "__main__":
+    
+    filename = "data/email.txt"
+    
+    attack_set_subtree = [43, 88, 54, 25, 66, 80, 23, 48, 16, 35]
+    attack_set_centrality = [54, 60, 71, 49, 25, 24, 48, 0, 26, 35]
+
+    degree_nodes(filename, attack_set_subtree, attack_set_centrality)

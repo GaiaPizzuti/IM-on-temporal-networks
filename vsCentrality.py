@@ -53,9 +53,12 @@ def simulate_infection(seed_set : set, filename : str, prob: float, removed_node
     messages = defaultdict(list)
 
     last_unixts = None
+    split_char = ' '
+    if filename == 'data/fb-forum.txt':
+        split_char = ','
 
     file = (row for row in open(filename, "r"))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(split_char) for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
     for src, dst, unixts in filtered_edges:
 
         if removed_nodes == []:
@@ -121,9 +124,13 @@ def forward_forest (seed_set : set, filename : str, prob: float) -> List[Node]:
     messages = defaultdict(list)
 
     last_unixts = None
+    
+    split_char = ' '
+    if filename == 'data/fb-forum.txt':
+        split_char = ','
 
     file = (row for row in open(filename, "r"))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split() for line in file] if int(dst) not in seed_set]
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(split_char) for line in file] if int(dst) not in seed_set]
 
     for src, dst, unixts in filtered_edges:
 
@@ -286,6 +293,8 @@ def centrality_analysis(filename: str, seed_set: set, node_budget: int, prob: fl
 
     ratio = average_subtree/average_centrality
     print(ratio)
+    
+    return selected_nodes_centrality
 
 if __name__ == "__main__":
     

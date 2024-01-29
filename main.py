@@ -1,8 +1,11 @@
 from copy import deepcopy
 import sys
 from temporalGraph import influence_maximization, spread_infection
-from subTreeInfection import minimize_infection
+from subTreeInfection import subtrees_methods
 from vsCentrality import centrality_analysis
+from comparison import result_comparison
+from degreeNodes import degree_nodes
+from cc import compare_cc
 
 filename = sys.argv[1]
 
@@ -30,11 +33,20 @@ def adversarial_attack_at_influence_maximization ():
     
     print('\n\n---- minimize infection with subtrees ----\n\n')
     
-    minimize_infection(filename, set(seed_set), node_budget, prob_of_being_infected)
+    subtree = subtrees_methods(filename, set(seed_set), node_budget, prob_of_being_infected)
+    print(subtree)
     
     print('\n\n---- minimize infection with centrality ----\n\n')
     
-    centrality_analysis(filename, set(seed_set), node_budget, prob_of_being_infected)
+    centrality = centrality_analysis(filename, set(seed_set), node_budget, prob_of_being_infected)
+    
+    print('\n\n---- result comparison ----\n\n')
+    
+    result_comparison(filename, set(seed_set), node_budget, set(subtree), set(centrality), prob_of_being_infected)
+    
+    degree_nodes(filename, subtree, centrality)
+    
+    compare_cc(filename, subtree, centrality)
 
 if __name__ == '__main__':
     adversarial_attack_at_influence_maximization()

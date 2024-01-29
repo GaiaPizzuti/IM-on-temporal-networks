@@ -1,4 +1,6 @@
-# ------------------------- class Node -------------------------
+'''
+file that define the subtrees_methods and all the functions used in it
+'''
 
 from collections import defaultdict
 import random
@@ -9,6 +11,8 @@ import matplotlib.pyplot as plt
 from operator import itemgetter
 
 PROB_OF_BEING_INFECTED = 0.2
+
+# ------------------------- class Node -------------------------
 
 class Node:
     
@@ -56,9 +60,13 @@ def simulate_infection(seed_set : set, filename : str, plot : list[int], prob: f
     messages = defaultdict(list)
 
     last_unixts = None
+    
+    split_char = ' '
+    if filename == 'data/fb-forum.txt':
+        split_char = ','
 
     file = (row for row in open(filename, "r"))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(" ") for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(split_char) for line in file] if int(src) not in removed_nodes and int(dst) not in removed_nodes]
     for src, dst, unixts in filtered_edges:
 
         # check if the last_unixts is None or queal to the current unixts
@@ -121,9 +129,12 @@ def forward_forest (seed_set : set, filename : str, prob: float) -> list[Node]:
     messages = defaultdict(list)
 
     last_unixts = None
+    split_char = ' '
+    if filename == 'data/fb-forum.txt':
+        split_char = ','
 
     file = (row for row in open(filename, "r"))
-    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(" ") for line in file] if int(dst) not in seed_set]
+    filtered_edges = [(int(src), int(dst), int(unixts)) for src, dst, unixts in [line.split(split_char) for line in file] if int(dst) not in seed_set]
 
     for src, dst, unixts in filtered_edges:
 
@@ -280,7 +291,20 @@ def translate_nodes (vertices, removed_nodes) -> set[int]:
             translated_nodes.add(vertex.index)
     return translated_nodes
 
-def minimize_infection(filename: str, seed_set: set, node_budget: int, prob: float = PROB_OF_BEING_INFECTED):
+def subtrees_methods(filename: str, seed_set: set, node_budget: int, prob: float = PROB_OF_BEING_INFECTED):
+    '''
+    function that find the attack set of nodes that will be removed in order to minimize the spread of infections
+    
+    
+    input:
+        - filename: string, the name of the file containing the information about the network
+        - seed_set: set, set of nodes selected to maximize the spread of the influence
+        - node_budget: int, the maximum size of the attack set
+        - prob: float, probability of a node of being infected
+        
+    output:
+        - selected_nodes: list, attack set
+    '''
     times = 10
     removed_nodes = defaultdict(int)
     
@@ -288,7 +312,7 @@ def minimize_infection(filename: str, seed_set: set, node_budget: int, prob: flo
     #ax0, ax1, ax2 = ax.flatten()
 
     set_plot = list()
-    fig, ax = plt.subplots(figsize=(5, 5))
+    plt.subplots(figsize=(5, 5))
 
     #forest_visualization (seed_set, filename, fig, ax0)
 
@@ -323,6 +347,8 @@ def minimize_infection(filename: str, seed_set: set, node_budget: int, prob: flo
     plt.xlabel("time")
     plt.ylabel("number of infected nodes")
     plt.show()
+    
+    return selected_nodes
 
 # ------------------------- Main -------------------------
 
@@ -332,4 +358,4 @@ if __name__ == "__main__":
     seed_set = {83, 49, 60, 85}
     node_budget = 10
     
-    minimize_infection(filename, seed_set, node_budget)
+    subtrees_methods(filename, seed_set, node_budget)

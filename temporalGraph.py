@@ -66,21 +66,6 @@ class Graph:
             if self.adjacency_list[node][dst] != []:
                 edges += 1
         return edges
-    
-
-def create_graph_from_file(filename, window_size=1000):
-    G = Graph()
-    current_time = 0
-    with open(filename, 'r') as f:
-        for line in f:
-            src, dst, unixts = line.split()
-            src, dst, unixts = int(src), int(dst), int(unixts)
-            G.add_edge(src, dst, unixts=unixts)
-            if current_time == window_size:
-                break
-            else:
-                current_time += 1
-    return G
 
 # i need to create a graph for each window
 # it's important to preserve each edge timestamp
@@ -90,8 +75,11 @@ def create_temporal_windows(filename, window_size=1000):
     last_unixts = None
     with open(filename, 'r') as f:
         G = Graph()
+        split_char = ' '
+        if filename == 'data/fb-forum.txt':
+            split_char = ','
         for line in f:
-            src, dst, unixts = line.split()
+            src, dst, unixts = line.split(split_char)
             src, dst, unixts = int(src), int(dst), int(unixts)
             G.add_edge(src, dst, unixts=unixts)
             if last_unixts != None and last_unixts != unixts:
@@ -118,8 +106,11 @@ def spread_infection(seed, filename, prob: float):
     infected = seed
     last_unixts = None
     with open(filename, 'r') as f:
+        split_char = ' '
+        if filename == 'data/fb-forum.txt':
+            split_char = ','
         for line in f:
-            src, dst, unixts = line.split()
+            src, dst, unixts = line.split(split_char)
             src, dst, unixts = int(src), int(dst), int(unixts)
             
             # if the source of the message is infected, the message is infected too
@@ -206,5 +197,5 @@ def influence_maximization(filename: str, prob: float = PROB_OF_BEING_INFECTED):
 # ---------------------------- MAIN ----------------------------
 
 if __name__ == "__main__":
-    filename = 'data/CollegeMsg.txt'
+    filename = 'data/email.txt'
     influence_maximization(filename)
