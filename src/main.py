@@ -8,6 +8,7 @@ from degreeNodes import degree_nodes
 from cc import compare_cc
 
 filename = sys.argv[1]
+node_budget = int(sys.argv[2])
 
 def adversarial_attack_at_influence_maximization ():
     '''
@@ -18,7 +19,6 @@ def adversarial_attack_at_influence_maximization ():
     '''
     
     prob_of_being_infected = 0.2
-    node_budget = 10
     
     print('---- find seed set ----\n\n')
     
@@ -34,11 +34,10 @@ def adversarial_attack_at_influence_maximization ():
     print('\n\n---- minimize infection with subtrees ----\n\n')
     
     subtree = subtrees_methods(filename, set(seed_set), node_budget, prob_of_being_infected)
-    print(subtree)
     
     print('\n\n---- minimize infection with centrality ----\n\n')
     
-    centrality = centrality_analysis(filename, set(seed_set), node_budget, prob_of_being_infected)
+    centrality = centrality_analysis(filename, set(seed_set), node_budget, set(subtree), prob_of_being_infected)
     
     print('\n\n---- result comparison ----\n\n')
     

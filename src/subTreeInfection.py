@@ -308,8 +308,8 @@ def subtrees_methods(filename: str, seed_set: set, node_budget: int, prob: float
     times = 10
     removed_nodes = defaultdict(int)
     
-    #fig, ax = plt.subplots(1, 3, figsize=(15, 15))
-    #ax0, ax1, ax2 = ax.flatten()
+    fig, ax = plt.subplots(1, 3, figsize=(15, 15))
+    ax0, ax1, ax2 = ax.flatten()
 
     set_plot = list()
     plt.subplots(figsize=(5, 5))
@@ -317,7 +317,7 @@ def subtrees_methods(filename: str, seed_set: set, node_budget: int, prob: float
     #forest_visualization (seed_set, filename, fig, ax0)
 
     first_simulation = simulate_infection (seed_set, filename, set_plot, prob)
-    plt.plot(set_plot, label="No preventive measures", color="blue")
+    #plt.plot(set_plot, label="No preventive measures", color="blue")
 
     print(f"Infected nodes:", len(first_simulation))
     
@@ -346,7 +346,7 @@ def subtrees_methods(filename: str, seed_set: set, node_budget: int, prob: float
     plt.legend(loc="lower right", fontsize=14)
     plt.xlabel("time")
     plt.ylabel("number of infected nodes")
-    plt.show()
+    #plt.show()
     
     return selected_nodes
 

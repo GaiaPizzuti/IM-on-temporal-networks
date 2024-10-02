@@ -81,7 +81,7 @@ def degree_nodes (filename: str, attack_set_subtree: list, attack_set_centrality
     ax.set_xlabel('Degree')
     ax.set_ylabel('Number of nodes')
 
-    plt.show()
+    #plt.show()
 
 
 if __name__ == "__main__":

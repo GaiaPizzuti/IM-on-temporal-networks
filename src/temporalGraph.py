@@ -198,4 +198,5 @@ def influence_maximization(filename: str, prob: float = PROB_OF_BEING_INFECTED):
 
 if __name__ == "__main__":
     filename = 'data/email.txt'
-    influence_maximization(filename)
+    seed = influence_maximization(filename)
+    print(seed)
